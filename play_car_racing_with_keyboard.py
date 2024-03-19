@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 
 is_pressed_left  = False # control left
 is_pressed_right = False # control right
@@ -87,7 +87,7 @@ def update_action():
             break_system = 0
 
 if __name__ == '__main__':
-    env = gym.make('CarRacing-v0')
+    env = gym.make('CarRacing-v2')
     state = env.reset()
     env.unwrapped.viewer.window.on_key_press = key_press
     env.unwrapped.viewer.window.on_key_release = key_release
