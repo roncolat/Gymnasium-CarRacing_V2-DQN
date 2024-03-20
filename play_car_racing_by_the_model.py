@@ -1,5 +1,5 @@
 import argparse
-import gym
+import gymnasium as gym
 from collections import deque
 from CarRacingDQNAgent import CarRacingDQNAgent
 from common_functions import process_state_image
@@ -13,7 +13,7 @@ if __name__ == '__main__':
     train_model = args.model
     play_episodes = args.episodes
 
-    env = gym.make('CarRacing-v0')
+    env = gym.make('CarRacing-v2')
     agent = CarRacingDQNAgent(epsilon=0) # Set epsilon to 0 to ensure all actions are instructed by the agent
     agent.load(train_model)
 
