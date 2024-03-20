@@ -104,8 +104,9 @@ if __name__ == '__main__':
             state, reward, terminated, truncated, info = env.step(action)
             counter += 1
             total_reward += reward
-            print('Action:[{:+.1f}, {:+.1f}, {:+.1f}] Reward: {:.3f}'.format(action[0], action[1], action[2], reward))
+            #print('Action:[{:+.1f}, {:+.1f}, {:+.1f}] Reward: {:.3f}'.format(action[0], action[1], action[2], reward))
             if terminated or truncated or is_pressed_ret or is_pressed_esc:
+                is_pressed_ret = False
                 break
         
     env.close()
