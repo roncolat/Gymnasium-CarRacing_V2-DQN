@@ -1,47 +1,50 @@
 import gymnasium as gym
+import pygame
 
 is_pressed_left  = False # control left
 is_pressed_right = False # control right
 is_pressed_space = False # control gas
 is_pressed_shift = False # control break
 is_pressed_esc   = False # exit the game
+is_pressed_ret   = False # restart the game
 steering_wheel = 0 # init to 0
 gas            = 0 # init to 0
 break_system   = 0 # init to 0
 
-def key_press(key, mod):
+
+def register_input():
     global is_pressed_left
     global is_pressed_right
     global is_pressed_space
     global is_pressed_shift
     global is_pressed_esc
+    global is_pressed_ret
 
-    if key == 65361:
-        is_pressed_left = True
-    if key == 65363:
-        is_pressed_right = True
-    if key == 32:
-        is_pressed_space = True
-    if key == 65505:
-        is_pressed_shift = True
-    if key == 65307:
-        is_pressed_esc = True
+    for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                is_pressed_left = True
+            if event.key == pygame.K_RIGHT:
+                is_pressed_right = True
+            if event.key == pygame.K_SPACE:
+                is_pressed_space = True
+            if event.key == pygame.K_LSHIFT:
+                is_pressed_shift = True
+            if event.key == pygame.K_RETURN:
+                is_pressed_ret = True
+            if event.key == pygame.K_ESCAPE:
+                is_pressed_esc = True
 
-def key_release(key, mod):
-    global is_pressed_left
-    global is_pressed_right
-    global is_pressed_space
-    global is_pressed_shift
-
-    if key == 65361:
-        is_pressed_left = False
-    if key == 65363:
-        is_pressed_right = False
-    if key == 32:
-        is_pressed_space = False
-    if key == 65505:
-        is_pressed_shift = False
-
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT:
+                is_pressed_left = False
+            if event.key == pygame.K_RIGHT:
+                is_pressed_right = False
+            if event.key == pygame.K_SPACE:
+                is_pressed_space = False
+            if event.key == pygame.K_LSHIFT:
+                is_pressed_shift = False
+            
 def update_action():
     global steering_wheel
     global gas
@@ -87,26 +90,22 @@ def update_action():
             break_system = 0
 
 if __name__ == '__main__':
-    env = gym.make('CarRacing-v2')
-    state = env.reset()
-    env.unwrapped.viewer.window.on_key_press = key_press
-    env.unwrapped.viewer.window.on_key_release = key_release
-
-    counter = 0
-    total_reward = 0
+    env = gym.make('CarRacing-v2', render_mode="human")
     while not is_pressed_esc:
-        env.render()
-        update_action()
-        action = [steering_wheel, gas, break_system]
-        state, reward, done, info = env.step(action)
-        counter += 1
-        total_reward += reward
-        print('Action:[{:+.1f}, {:+.1f}, {:+.1f}] Reward: {:.3f}'.format(action[0], action[1], action[2], reward))
-        if done:
-            print("Restart game after {} timesteps. Total Reward: {}".format(counter, total_reward))
-            counter = 0
-            total_reward = 0
-            state = env.reset()
-            continue
-
+        state = env.reset()
+        counter = 0
+        total_reward = 0
+        print("Restart game after {} timesteps. Total Reward: {}".format(counter, total_reward))
+             
+        while True:
+            register_input()
+            update_action()
+            action = [steering_wheel, gas, break_system]
+            state, reward, terminated, truncated, info = env.step(action)
+            counter += 1
+            total_reward += reward
+            print('Action:[{:+.1f}, {:+.1f}, {:+.1f}] Reward: {:.3f}'.format(action[0], action[1], action[2], reward))
+            if terminated or truncated or is_pressed_ret or is_pressed_esc:
+                break
+        
     env.close()
