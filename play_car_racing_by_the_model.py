@@ -1,24 +1,30 @@
+import os
+
+os.environ["KERAS_BACKEND"] = "torch"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
 import argparse
 import gymnasium as gym
 from collections import deque
 from CarRacingDQNAgent import CarRacingDQNAgent
+
 from common_functions import process_state_image
 from common_functions import generate_state_frame_stack_from_queue
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Play CarRacing by the trained model.')
-    parser.add_argument('-m', '--model', required=True, help='The `.h5` file of the trained model.')
-    parser.add_argument('-e', '--episodes', type=int, default=1, help='The number of episodes should the model plays.')
-    args = parser.parse_args()
-    train_model = args.model
-    play_episodes = args.episodes
+    # parser = argparse.ArgumentParser(description='Play CarRacing by the trained model.')
+    # parser.add_argument('-m', '--model', required=True, help='The `.h5` file of the trained model.')
+    # parser.add_argument('-e', '--episodes', type=int, default=1, help='The number of episodes should the model plays.')
+    # args = parser.parse_args()
+    train_model = "./save/trial_500.h5"
+    play_episodes = 5
 
-    env = gym.make('CarRacing-v2')
+    env = gym.make('CarRacing-v2', render_mode="human")
     agent = CarRacingDQNAgent(epsilon=0) # Set epsilon to 0 to ensure all actions are instructed by the agent
     agent.load(train_model)
 
     for e in range(play_episodes):
-        init_state = env.reset()
+        init_state, info = env.reset()
         init_state = process_state_image(init_state)
 
         total_reward = 0
@@ -31,14 +37,14 @@ if __name__ == '__main__':
 
             current_state_frame_stack = generate_state_frame_stack_from_queue(state_frame_stack_queue)
             action = agent.act(current_state_frame_stack)
-            next_state, reward, done, info = env.step(action)
+            next_state, reward, terminated, truncated, info = env.step(action)
 
             total_reward += reward
 
             next_state = process_state_image(next_state)
             state_frame_stack_queue.append(next_state)
 
-            if done:
+            if terminated or truncated:
                 print('Episode: {}/{}, Scores(Time Frames): {}, Total Rewards: {:.2}'.format(e+1, play_episodes, time_frame_counter, float(total_reward)))
                 break
             time_frame_counter += 1

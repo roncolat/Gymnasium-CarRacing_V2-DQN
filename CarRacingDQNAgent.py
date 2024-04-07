@@ -1,9 +1,8 @@
 import random
 import numpy as np
 from collections import deque
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
-from tensorflow.keras.optimizers import Adam
+import keras
+from keras.optimizers import Adam
 
 class CarRacingDQNAgent:
     def __init__(
@@ -36,15 +35,23 @@ class CarRacingDQNAgent:
 
     def build_model(self):
         # Neural Net for Deep-Q learning Model
-        model = Sequential()
-        model.add(Conv2D(filters=6, kernel_size=(7, 7), strides=3, activation='relu', input_shape=(96, 96, self.frame_stack_num)))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Conv2D(filters=12, kernel_size=(4, 4), activation='relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Flatten())
-        model.add(Dense(216, activation='relu'))
-        model.add(Dense(len(self.action_space), activation=None))
-        model.compile(loss='mean_squared_error', optimizer=Adam(lr=self.learning_rate, epsilon=1e-7))
+        # Model parameters
+        num_classes = 10
+        input_shape = (96, 96, self.frame_stack_num)
+
+        model = keras.Sequential(
+            [
+                keras.layers.Input(shape=input_shape),
+                keras.layers.Conv2D(filters=6, kernel_size=(7, 7), strides=3, activation="relu"),
+                keras.layers.MaxPooling2D(pool_size=(2, 2)),
+                keras.layers.Conv2D(filters=12, kernel_size=(4, 4), activation="relu"),
+                keras.layers.MaxPooling2D(pool_size=(2, 2)),
+                keras.layers.Flatten(),
+                keras.layers.Dense(216, activation="relu"),
+                keras.layers.Dense(len(self.action_space), activation=None)
+            ]
+        )
+        model.compile(loss='mean_squared_error', optimizer=Adam(learning_rate=self.learning_rate, epsilon=1e-7))
         return model
 
     def update_target_model(self):
@@ -55,7 +62,7 @@ class CarRacingDQNAgent:
 
     def act(self, state):
         if np.random.rand() > self.epsilon:
-            act_values = self.model.predict(np.expand_dims(state, axis=0))
+            act_values = self.model.predict(np.expand_dims(state, axis=0), verbose=0)
             action_index = np.argmax(act_values[0])
         else:
             action_index = random.randrange(len(self.action_space))
