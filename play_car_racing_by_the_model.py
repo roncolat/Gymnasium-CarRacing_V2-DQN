@@ -16,7 +16,7 @@ if __name__ == '__main__':
     # parser.add_argument('-m', '--model', required=True, help='The `.h5` file of the trained model.')
     # parser.add_argument('-e', '--episodes', type=int, default=1, help='The number of episodes should the model plays.')
     # args = parser.parse_args()
-    train_model = "./save/trial_500.h5"
+    train_model = "./save/trial_900.weights.h5"
     play_episodes = 5
 
     env = gym.make('CarRacing-v2', render_mode="human")

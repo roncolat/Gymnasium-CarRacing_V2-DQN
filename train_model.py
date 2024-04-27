@@ -1,44 +1,62 @@
+import os
+
+os.environ["KERAS_BACKEND"] = "torch"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
 import argparse
-import gym
+import gymnasium as gym
 from collections import deque
 from CarRacingDQNAgent import CarRacingDQNAgent
 from common_functions import process_state_image
 from common_functions import generate_state_frame_stack_from_queue
 
 RENDER                        = True
-STARTING_EPISODE              = 1
-ENDING_EPISODE                = 1000
+STARTING_EPISODE              = 700
+ENDING_EPISODE                = 800
 SKIP_FRAMES                   = 2
 TRAINING_BATCH_SIZE           = 64
 SAVE_TRAINING_FREQUENCY       = 25
 UPDATE_TARGET_MODEL_FREQUENCY = 5
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Training a DQN agent to play CarRacing.')
-    parser.add_argument('-m', '--model', help='Specify the last trained model path if you want to continue training after it.')
-    parser.add_argument('-s', '--start', type=int, help='The starting episode, default to 1.')
-    parser.add_argument('-e', '--end', type=int, help='The ending episode, default to 1000.')
-    parser.add_argument('-p', '--epsilon', type=float, default=1.0, help='The starting epsilon of the agent, default to 1.0.')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description='Training a DQN agent to play CarRacing.')
+    # parser.add_argument('-m', '--model', help='Specify the last trained model path if you want to continue training after it.')
+    # parser.add_argument('-s', '--start', type=int, help='The starting episode, default to 1.')
+    # parser.add_argument('-e', '--end', type=int, help='The ending episode, default to 1000.')
+    # parser.add_argument('-p', '--epsilon', type=float, default=1.0, help='The starting epsilon of the agent, default to 1.0.')
+    # args = parser.parse_args()
+    model = "./save/trial_800.weights.h5"
 
-    env = gym.make('CarRacing-v0')
-    agent = CarRacingDQNAgent(epsilon=args.epsilon)
-    if args.model:
-        agent.load(args.model)
-    if args.start:
-        STARTING_EPISODE = args.start
-    if args.end:
-        ENDING_EPISODE = args.end
+    env = gym.make('CarRacing-v2', render_mode="rgb_array")
+    agent = CarRacingDQNAgent(epsilon=0.1)
+    agent.load(model)
+    
+    STARTING_EPISODE = 800
+    ENDING_EPISODE = 900
+    INITIAL_NO_OPS = 50
+
+    # if args.model:
+    #     agent.load(args.model)
+    # if args.start:
+    #     STARTING_EPISODE = args.start
+    # if args.end:
+    #     ENDING_EPISODE = args.end
 
     for e in range(STARTING_EPISODE, ENDING_EPISODE+1):
-        init_state = env.reset()
+        init_state, info = env.reset()
+
+        for _ in range(INITIAL_NO_OPS):
+            init_state, reward, terminated, truncated, info = env.step((0, 0, 0))
+            if RENDER:
+                env.render()
+
         init_state = process_state_image(init_state)
 
         total_reward = 0
         negative_reward_counter = 0
         state_frame_stack_queue = deque([init_state]*agent.frame_stack_num, maxlen=agent.frame_stack_num)
         time_frame_counter = 1
-        done = False
+        
         
         while True:
             if RENDER:
@@ -47,11 +65,15 @@ if __name__ == '__main__':
             current_state_frame_stack = generate_state_frame_stack_from_queue(state_frame_stack_queue)
             action = agent.act(current_state_frame_stack)
 
-            reward = 0
+            if time_frame_counter == 1:
+                reward = 7
+            else:
+                reward = 0
+
             for _ in range(SKIP_FRAMES+1):
-                next_state, r, done, info = env.step(action)
+                next_state, r, truncated, terminated, info = env.step(action)
                 reward += r
-                if done:
+                if truncated or terminated:
                     break
 
             # If continually getting negative reward 10 times after the tolerance steps, terminate this episode
@@ -67,19 +89,22 @@ if __name__ == '__main__':
             state_frame_stack_queue.append(next_state)
             next_state_frame_stack = generate_state_frame_stack_from_queue(state_frame_stack_queue)
 
-            agent.memorize(current_state_frame_stack, action, reward, next_state_frame_stack, done)
+            agent.memorize(current_state_frame_stack, action, reward, next_state_frame_stack, terminated)
 
-            if done or negative_reward_counter >= 25 or total_reward < 0:
+            if terminated or truncated or negative_reward_counter >= 25 or total_reward < 0:
                 print('Episode: {}/{}, Scores(Time Frames): {}, Total Rewards(adjusted): {:.2}, Epsilon: {:.2}'.format(e, ENDING_EPISODE, time_frame_counter, float(total_reward), float(agent.epsilon)))
                 break
-            if len(agent.memory) > TRAINING_BATCH_SIZE:
+            if len(agent.memory) > TRAINING_BATCH_SIZE and time_frame_counter > TRAINING_BATCH_SIZE:
                 agent.replay(TRAINING_BATCH_SIZE)
+            
+            print("Frame: {:4d}, Total Rewards(adjusted): {:06.2f}".format(time_frame_counter, float(total_reward)), end="\r")
             time_frame_counter += 1
 
         if e % UPDATE_TARGET_MODEL_FREQUENCY == 0:
             agent.update_target_model()
 
         if e % SAVE_TRAINING_FREQUENCY == 0:
-            agent.save('./save/trial_{}.h5'.format(e))
+            temp = "./save/trial_{}.weights.h5".format(e)
+            agent.save(temp)
 
     env.close()
